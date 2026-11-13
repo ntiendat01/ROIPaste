@@ -132,4 +132,25 @@ class HttpTransferRepositoryTest {
             .build()
         return HttpTransferRepository(ApiClient(store) { client })
     }
+
+    @Test
+    fun awaitNextClipParsesSequenceAndTimeoutQuery() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"message_id":"m","origin":"mac","kind":"text","text":"push","sequence":4}""",
+            ),
+        )
+        val result = repository().awaitNextClip(2, 25).getOrThrow()
+        assertEquals("push", result?.text)
+        assertEquals(4L, result?.sequence)
+        assertEquals(4, result?.byteCount)
+        assertEquals("/v1/clip/next?since=2&timeout=25", server.takeRequest().path)
+    }
+
+    @Test
+    fun awaitNextClipTimeoutBodyIsNull() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+        assertNull(repository().awaitNextClip(0, 0).getOrThrow())
+    }
+
 }
