@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 from fastapi import APIRouter, Request
 
 from app.core.errors import PairingError
@@ -48,6 +50,7 @@ def pair_complete(request: Request, body: PairCompleteRequest) -> PairCompleteRe
     if limiter is not None:
         limiter.check(_client_key(request, "complete"))
     result = _pairing(request).complete(body.enrollment_token, body.device_id, body.alias)
+    print("Pairing complete. The phone can now connect over Wi-Fi.", file=sys.stdout, flush=True)
     return PairCompleteResponse(
         device_id=result.device_id,
         alias=result.alias,

@@ -4,29 +4,22 @@ from __future__ import annotations
 
 import argparse
 import sys
-import threading
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from app.cli_input import TerminalInput
 from app.config import default_config_dir
 from app.security.certs import CertificateStore
 from app.security.devices import DeviceStore, open_device_store
 from app.security.pairing import PairingService
 
 
-def start_command_thread(pairing: Any, devices: Any, watcher: Any) -> None:
-    if not sys.stdin.isatty():
-        return
-
-    def loop() -> None:
-        for raw in sys.stdin:
-            line = raw.strip()
-            if not line:
-                continue
-            handle_command(line, pairing, devices, watcher)
-
-    threading.Thread(target=loop, daemon=True, name="roipaste-stdin").start()
+def start_command_thread(
+    pairing: Any, devices: Any, watcher: Any, terminal: TerminalInput | None = None
+) -> None:
+    reader = terminal if terminal is not None else TerminalInput()
+    reader.start(lambda line: handle_command(line, pairing, devices, watcher))
 
 
 def handle_command(line: str, pairing: Any, devices: Any, watcher: Any) -> None:

@@ -9,7 +9,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.security.cert.CertificateException
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLException
 import javax.net.ssl.SSLPeerUnverifiedException
 
@@ -29,7 +31,12 @@ class PairingClient(
             .url(payload.baseUrl + "/v1/pair/complete")
             .post(body.toRequestBody(JSON_MEDIA))
             .build()
-        val client = HttpClients.pinned(payload.pin, payload.host)
+        // Human approval on the Mac can take up to 60 seconds.
+        val client = HttpClients.pinned(payload.pin, payload.host).newBuilder()
+            .readTimeout(65, TimeUnit.SECONDS)
+            .callTimeout(70, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(false)
+            .build()
         return try {
             client.newCall(request).execute().use { response ->
                 val text = response.body?.string()
@@ -40,6 +47,8 @@ class PairingClient(
                     ?: return Result.failure(TransferError.InvalidResponse)
                 Result.success(parsed)
             }
+        } catch (_: SocketTimeoutException) {
+            Result.failure(TransferError.Timeout)
         } catch (_: SSLPeerUnverifiedException) {
             Result.failure(TransferError.PinMismatch)
         } catch (_: CertificateException) {

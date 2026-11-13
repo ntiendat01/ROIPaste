@@ -128,7 +128,6 @@ python -m app --watch
 
 ### Manual gate on a Mac (pending user run)
 
-
 Use a benign test string only. In a terminal, start the agent and copy the printed token:
 
 ```bash
@@ -167,7 +166,6 @@ python3 -c 'import json; print(json.dumps({"message_id":"11111111-1111-4111-8111
       --data-binary @- -w "\n%{http_code}\n"
 # expect PAYLOAD_TOO_LARGE and HTTP 413
 ```
-
 
 ## Android app
 
@@ -223,6 +221,8 @@ python -m app --lan --pair
 ```
 
 If macOS asks to allow incoming connections, choose Allow. Confirm the terminal shows `https://<private-ip>:5000`, a SPKI pin, an ASCII QR, and a JSON line. Install the debug APK on the phone, open ROIPaste, open **Ghép cặp thiết bị**, choose **Wi-Fi**, then either tap **Quét mã QR** or paste the JSON line into the payload field and tap **Xem dấu vân tay**. Check that the short SPKI fingerprint matches the one printed on the Mac, set a device alias if you want, and tap **Xác nhận và ghép cặp**. On the Mac, type `y` when prompted. The phone should then show **Wi-Fi an toàn**.
+
+Press Enter after `y`. The agent waits up to 60 seconds for this approval, prints `Pairing approved; saving device...`, then `Pairing complete` after storing the device. Android pairing waits up to 65 seconds for the response (70-second overall call limit); ordinary clipboard requests retain their shorter timeouts. Install a freshly built APK to receive this timeout fix. A single terminal reader handles both commands and approval, so the command loop cannot consume the confirmation. If approval expires or is denied, type `pair`, scan the new QR, and retry on the phone. Restart the running agent after updating its code. If the last message is `saving device...`, check for a macOS Keychain authorization prompt.
 
 1. Copy a short harmless sentence on the phone, keep ROIPaste in the foreground, tap **Gửi clipboard sang Mac**. On the Mac, `pbpaste` (or Cmd+V) should match.
 2. Copy a different harmless sentence on the Mac, tap **Lấy clipboard từ Mac**, reveal the preview, then **Sao chép vào Android**. Paste in another Android app; the text should match.

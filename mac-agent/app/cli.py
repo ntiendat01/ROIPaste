@@ -11,6 +11,7 @@ from pathlib import Path
 import uvicorn
 
 from app.cli_commands import admin_main, start_command_thread
+from app.cli_input import TerminalInput
 from app.config import Settings, default_config_dir
 from app.core.errors import InsecureLanConfigError, InvalidBindAddressError
 from app.core.net import detect_private_ipv4
@@ -116,13 +117,14 @@ def _serve_lan(settings: Settings, certs: CertificateStore, open_pair: bool) -> 
     certs.get_or_create(settings.host)
     pin = certs.pin()
     devices = open_device_store(settings.resolved_config_dir)
+    terminal = TerminalInput()
     pairing = PairingService(
         host=settings.host,
         port=settings.port,
         pin=pin,
         devices=devices,
         clock=time.time,
-        confirm=_prompt_confirm,
+        confirm=terminal.confirm,
     )
     limiter = RateLimiter(clock=time.time)
     application = create_app(
@@ -134,7 +136,7 @@ def _serve_lan(settings: Settings, certs: CertificateStore, open_pair: bool) -> 
     _print_lan_banner(settings, pin, certs, application.state.watcher.enabled)
     if open_pair:
         _print_pairing_qr(pairing)
-    start_command_thread(pairing, devices, application.state.watcher)
+    start_command_thread(pairing, devices, application.state.watcher, terminal)
     uvicorn.run(
         application,
         host=settings.host,
@@ -205,19 +207,6 @@ def _print_pairing_qr(pairing: PairingService) -> None:
             "",
         ]
     )
-
-
-def _prompt_confirm(alias: str, fingerprint: str) -> bool:
-    print(
-        f"Pair device {alias!r} with certificate fingerprint {fingerprint}? [y/N]",
-        file=sys.stdout,
-    )
-    sys.stdout.flush()
-    try:
-        answer = input().strip().lower()
-    except EOFError:
-        return False
-    return answer in {"y", "yes"}
 
 
 def _emit(lines: list[str]) -> None:
