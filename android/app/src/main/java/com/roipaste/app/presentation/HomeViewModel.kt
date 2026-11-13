@@ -9,7 +9,11 @@ import com.roipaste.app.domain.FetchClip
 import com.roipaste.app.domain.PauseSync
 import com.roipaste.app.domain.SendClip
 import com.roipaste.app.domain.SessionStore
+import com.roipaste.app.data.network.PairCompleter
+import com.roipaste.app.data.network.PairingClient
 import com.roipaste.app.domain.TransferRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,11 +30,23 @@ class HomeViewModel(
     private val clipboard: ClipboardGateway,
     private val sessionStore: SessionStore,
     private val repository: TransferRepository,
+    private val pairingClient: PairCompleter = PairingClient(),
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val uiActive: () -> Boolean = { true },
 ) : ViewModel() {
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
+    private var reconnectJob: Job? = null
+    private val pairing = HomePairing(
+        sessionStore = sessionStore,
+        pairingClient = pairingClient,
+        clock = clock,
+        ioDispatcher = ioDispatcher,
+        state = _state,
+        scope = viewModelScope,
+        onPaired = { reconnect() },
+    )
 
     init {
         viewModelScope.launch {
@@ -47,36 +63,79 @@ class HomeViewModel(
     }
 
     fun reconnect() {
-        viewModelScope.launch {
-            _state.update { it.copy(connection = ConnectionState.Checking) }
-            val health = withContext(ioDispatcher) { repository.health() }
-            if (health.isFailure) {
-                _state.update { it.copy(connection = ConnectionState.Disconnected, banner = Banner.Disconnected) }
-                return@launch
-            }
-            if (sessionStore.currentToken().isNullOrBlank()) {
-                _state.update { it.copy(connection = ConnectionState.Disconnected) }
-                return@launch
-            }
-            val status = withContext(ioDispatcher) { repository.status() }
-            status.fold(
-                onSuccess = { mac ->
-                    _state.update {
-                        it.copy(
-                            connection = ConnectionState.Connected,
-                            transport = mac.transport,
-                            banner = if (it.banner is Banner.Disconnected) Banner.Ready else it.banner ?: Banner.Ready,
-                        )
+        viewModelScope.launch { attemptConnection() }
+    }
+
+    fun reconnectWithBackoff() {
+        reconnectJob?.cancel()
+        reconnectJob = viewModelScope.launch {
+            val delaysMs = listOf(0L, 1_000L, 2_000L, 4_000L)
+            for ((index, wait) in delaysMs.withIndex()) {
+                if (index > 0) {
+                    if (!uiActive()) {
+                        return@launch
                     }
-                },
-                onFailure = { error ->
-                    _state.update {
-                        it.copy(connection = ConnectionState.Disconnected, banner = ErrorMapping.bannerFor(error, sending = false))
+                    delay(wait)
+                    if (!uiActive()) {
+                        return@launch
                     }
-                },
-            )
+                }
+                if (attemptConnection()) {
+                    return@launch
+                }
+            }
         }
     }
+
+    private suspend fun attemptConnection(): Boolean {
+        _state.update { it.copy(connection = ConnectionState.Checking) }
+        val health = withContext(ioDispatcher) { repository.health() }
+        if (health.isFailure) {
+            val error = health.exceptionOrNull()
+            val banner = if (error != null) ErrorMapping.bannerFor(error, sending = false) else Banner.Disconnected
+            _state.update { it.copy(connection = ConnectionState.Disconnected, banner = banner) }
+            return false
+        }
+        if (sessionStore.currentToken().isNullOrBlank()) {
+            _state.update { it.copy(connection = ConnectionState.Disconnected) }
+            return false
+        }
+        val status = withContext(ioDispatcher) { repository.status() }
+        return status.fold(
+            onSuccess = { mac ->
+                _state.update {
+                    it.copy(
+                        connection = ConnectionState.Connected,
+                        transport = mac.transport,
+                        banner = if (it.banner is Banner.Disconnected || it.banner is Banner.PinMismatch) {
+                            Banner.Ready
+                        } else {
+                            it.banner ?: Banner.Ready
+                        },
+                    )
+                }
+                true
+            },
+            onFailure = { error ->
+                _state.update {
+                    it.copy(connection = ConnectionState.Disconnected, banner = ErrorMapping.bannerFor(error, sending = false))
+                }
+                false
+            },
+        )
+    }
+
+    fun selectPairMethod(method: PairMethod) = pairing.selectMethod(method)
+
+    fun updateWifiPayload(value: String) = pairing.updateWifiPayload(value)
+
+    fun updateAlias(value: String) = pairing.updateAlias(value)
+
+    fun submitWifiPayload() = pairing.submitWifiPayload()
+
+    fun cancelWifiConfirm() = pairing.cancelWifiConfirm()
+
+    fun confirmWifiPair() = pairing.confirmWifiPair()
 
     private var lastTransfer: TransferKind? = null
 
@@ -161,15 +220,15 @@ class HomeViewModel(
             return
         }
         viewModelScope.launch {
-            sessionStore.setToken(trimmed)
-            _state.update { it.copy(screen = HomeScreenKind.Home, tokenInput = "", pairError = false) }
+            sessionStore.setUsbSession(trimmed)
+            _state.update { it.copy(screen = HomeScreenKind.Home, tokenInput = "", pairError = false, transport = "usb") }
             reconnect()
         }
     }
 
     fun unpair() {
         viewModelScope.launch {
-            sessionStore.setToken(null)
+            sessionStore.clearPairing()
             _state.update {
                 it.copy(
                     screen = HomeScreenKind.Home,

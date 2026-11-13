@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.roipaste.app.presentation.HomeViewModel
 import com.roipaste.app.ui.AppNavHost
+import com.roipaste.app.ui.QrScanLauncher
 import com.roipaste.app.ui.theme.RoiPasteTheme
 
 class MainActivity : ComponentActivity() {
@@ -33,7 +34,7 @@ class MainActivity : ComponentActivity() {
                     onFetch = viewModel::fetch,
                     onCopy = viewModel::copyToAndroid,
                     onTogglePreview = viewModel::togglePreview,
-                    onReconnect = viewModel::reconnect,
+                    onReconnect = viewModel::reconnectWithBackoff,
                     onTogglePause = viewModel::setSyncPaused,
                     onOpenPair = viewModel::openPair,
                     onOpenSettings = viewModel::openSettings,
@@ -42,6 +43,18 @@ class MainActivity : ComponentActivity() {
                     onUnpair = viewModel::unpair,
                     onBack = viewModel::closeOverlay,
                     onRetry = viewModel::retry,
+                    onSelectMethod = viewModel::selectPairMethod,
+                    onWifiPayloadChange = viewModel::updateWifiPayload,
+                    onAliasChange = viewModel::updateAlias,
+                    onSubmitWifi = viewModel::submitWifiPayload,
+                    onScanQr = {
+                        QrScanLauncher.start(this) { raw ->
+                            viewModel.updateWifiPayload(raw)
+                            viewModel.submitWifiPayload()
+                        }
+                    },
+                    onConfirmWifi = viewModel::confirmWifiPair,
+                    onCancelWifi = viewModel::cancelWifiConfirm,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

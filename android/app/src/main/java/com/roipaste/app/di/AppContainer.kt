@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModelProvider
 import com.roipaste.app.data.clipboard.AndroidClipboardGateway
 import com.roipaste.app.data.clipboard.SystemClipboardSource
 import com.roipaste.app.data.network.ApiClient
+import com.roipaste.app.data.network.HttpClients
+import com.roipaste.app.data.network.PairingClient
 import com.roipaste.app.data.network.HttpTransferRepository
 import com.roipaste.app.data.security.AndroidKeystoreAesGcmCipher
 import com.roipaste.app.data.settings.DataStoreSessionStore
@@ -30,7 +32,8 @@ class AppContainer(context: Context) {
     )
     val sessionStore = sessionStoreImpl
 
-    private val api = ApiClient(sessionStore, ApiClient.createClient())
+    private val api = ApiClient(sessionStore) { HttpClients.forSession(sessionStore) }
+    val pairingClient = PairingClient()
     val repository = HttpTransferRepository(api)
     val sendClip = SendClip(repository)
     val fetchClip = FetchClip(repository)
@@ -45,7 +48,16 @@ class AppContainer(context: Context) {
             source = systemClipboard(),
             focusChecker = mainFocus,
         )
-        return HomeViewModel(sendClip, fetchClip, pauseSync, clipboard, sessionStore, repository)
+        return HomeViewModel(
+            sendClip,
+            fetchClip,
+            pauseSync,
+            clipboard,
+            sessionStore,
+            repository,
+            pairingClient,
+            uiActive = { mainFocus.resumed },
+        )
     }
 
     fun shareViewModel(validation: ShareValidation): ShareViewModel {

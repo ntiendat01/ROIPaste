@@ -128,7 +128,9 @@ private fun Banner?.isRetryable(): Boolean {
         this is Banner.SendFailed ||
         this is Banner.FetchFailed ||
         this is Banner.Unauthenticated ||
-        this is Banner.Forbidden
+        this is Banner.Forbidden ||
+        this is Banner.PinMismatch ||
+        this is Banner.InsecureTransport
 }
 
 @Preview(showBackground = true)

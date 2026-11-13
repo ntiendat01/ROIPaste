@@ -1,5 +1,7 @@
 package com.roipaste.app.presentation
 
+import com.roipaste.app.domain.PairingPayload
+
 data class HomeUiState(
     val screen: HomeScreenKind = HomeScreenKind.Home,
     val hasToken: Boolean = false,
@@ -13,8 +15,18 @@ data class HomeUiState(
     val syncPaused: Boolean = false,
     val tokenInput: String = "",
     val pairError: Boolean = false,
+    val pairMethod: PairMethod = PairMethod.Usb,
+    val wifiPayloadInput: String = "",
+    val pendingWifi: PairingPayload? = null,
+    val aliasInput: String = "Ace 5",
+    val pairingBusy: Boolean = false,
     val banner: Banner? = null,
 )
+
+enum class PairMethod {
+    Usb,
+    Wifi,
+}
 
 enum class HomeScreenKind {
     Home,
@@ -62,4 +74,12 @@ sealed class Banner {
     data object Copied : Banner()
 
     data object CopyFailed : Banner()
+
+    data object PinMismatch : Banner()
+
+    data object InsecureTransport : Banner()
+
+    data object PairingFailed : Banner()
+
+    data object PairingExpired : Banner()
 }

@@ -28,6 +28,10 @@ object BannerMessages {
             Banner.NothingToCopy -> R.string.status_nothing_to_copy
             Banner.Copied -> R.string.status_copied
             Banner.CopyFailed -> R.string.status_copy_failed
+            Banner.PinMismatch -> R.string.status_pin_mismatch
+            Banner.InsecureTransport -> R.string.status_insecure_transport
+            Banner.PairingFailed -> R.string.status_pairing_failed
+            Banner.PairingExpired -> R.string.status_pairing_expired
         }
     }
 

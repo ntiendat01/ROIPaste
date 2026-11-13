@@ -22,6 +22,13 @@ fun AppNavHost(
     onUnpair: () -> Unit,
     onBack: () -> Unit,
     onRetry: () -> Unit,
+    onSelectMethod: (com.roipaste.app.presentation.PairMethod) -> Unit,
+    onWifiPayloadChange: (String) -> Unit,
+    onAliasChange: (String) -> Unit,
+    onSubmitWifi: () -> Unit,
+    onScanQr: () -> Unit,
+    onConfirmWifi: () -> Unit,
+    onCancelWifi: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (state.screen) {
@@ -30,6 +37,13 @@ fun AppNavHost(
             onTokenChange = onTokenChange,
             onSave = onSaveToken,
             onBack = onBack,
+            onSelectMethod = onSelectMethod,
+            onWifiPayloadChange = onWifiPayloadChange,
+            onAliasChange = onAliasChange,
+            onSubmitWifi = onSubmitWifi,
+            onScanQr = onScanQr,
+            onConfirmWifi = onConfirmWifi,
+            onCancelWifi = onCancelWifi,
             modifier = modifier,
         )
         HomeScreenKind.Settings -> SettingsScreen(
