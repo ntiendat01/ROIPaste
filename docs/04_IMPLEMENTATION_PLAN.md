@@ -17,14 +17,14 @@ Implement one milestone at a time. No fake API success, no hidden stubs marked c
 
 ## Milestone 1 — Mac loopback server & USB transfer
 
-- [ ] Add typed models, size validation, error envelope and UUID idempotency.
-- [ ] Add Mac clipboard adapter with injectable mock and subprocess-safe `pbcopy/pbpaste`; preserve Unicode and multiline.
-- [ ] Implement `/v1/health`, authenticated GET/POST `/v1/clip`, `/v1/status`.
-- [ ] Bind only to 127.0.0.1:5000. Create per-session development token, display safely only to local user (never log to files).
-- [ ] Write tests for auth denial, empty clipboard, Unicode, 256 KiB guard, duplicate ID, clipboard errors, no content logging.
-- [ ] Create `scripts/connect_usb.sh` using `adb devices` and `adb reverse tcp:5000 tcp:5000` (do not call adb as root).
+- [x] Add typed models, size validation, error envelope and UUID idempotency. Covered by unit and API tests (400 envelope, 413 oversize, UUID/kind/origin validation).
+- [x] Add Mac clipboard adapter with injectable mock and subprocess-safe `pbcopy/pbpaste`; preserve Unicode and multiline. Fake adapter used in tests; `MacClipboardAdapter` unit tests mock `subprocess.run`. The Darwin integration test is skipped on this Linux runner.
+- [x] Implement `/v1/health`, authenticated GET/POST `/v1/clip`, `/v1/status`. Verified with pytest and a fake clipboard.
+- [x] Bind only to 127.0.0.1:5000. Create per-session development token, display safely only to local user (never log to files). `Settings` rejects `0.0.0.0` and other non-loopback hosts. `python -m app` prints the token to stdout and disables the uvicorn access log. A persistent token file was not added.
+- [x] Write tests for auth denial, empty clipboard, Unicode, 256 KiB guard, duplicate ID, clipboard errors, no content logging. Local `ruff check`, `mypy app`, and `pytest` passed on 2026-11-13 (Asia/Bangkok, UTC+7): 39 passed, 1 skipped (Darwin-only adapter test).
+- [x] Create `scripts/connect_usb.sh` using `adb devices` and `adb reverse tcp:5000 tcp:5000` (do not call adb as root). `shellcheck` 0.11.0 passed. The script itself was not exercised against a physical device.
 
-**Gate:** curl with valid bearer token over loopback sets and reads Mac text; unauthenticated/oversize requests fail.
+**Gate:** Local pytest covers unauthenticated 401, oversize 413, and fake-clipboard read/write. The real macOS gate (`curl` with a bearer token over loopback sets and reads Mac text via `pbcopy`/`pbpaste`) is still pending a user test on macOS.
 
 ## Milestone 2 — Android MVP app
 

@@ -1,6 +1,6 @@
 # ROIPaste — Android ↔ macOS Clipboard Companion
 
-**Status:** Milestone 0 scaffolds are complete locally. A GitHub Actions workflow is in the repository but has not yet been observed running on GitHub.
+**Status:** Milestone 1 Mac loopback server is implemented and covered by unit tests. The real macOS clipboard gate (curl + `pbcopy`/`pbpaste`) still needs to be run on a Mac. GitHub Actions CI for Milestone 0 was observed green.
 
 ROIPaste transfers text and URLs between an Android phone (target: OnePlus Ace 5 / OxygenOS 16) and a MacBook over USB/ADB or a secured local network, without root or cloud API.
 
@@ -67,10 +67,58 @@ pip install -r requirements-dev.txt
 ruff check
 mypy app
 pytest
-uvicorn app.main:app --host 127.0.0.1 --port 5000
+python -m app
 ```
 
-The development server binds to `127.0.0.1:5000`. This scaffold exposes only `GET /v1/health`, which returns `{"status":"ok","protocol":1}`. Clipboard routes are added in Milestone 1 and must never be unauthenticated.
+`python -m app` binds only to `127.0.0.1:5000` (non-loopback hosts are rejected) and prints a per-session bearer token once to the terminal (stdout, not the log file). `GET /v1/health` stays unauthenticated and returns `{"status":"ok","protocol":1}` with no clipboard data. `GET /v1/status` and `GET`/`POST /v1/clip` require `Authorization: Bearer <token>`.
+
+To connect a phone over USB after the agent is running:
+
+```bash
+# from the repository root, with adb on PATH
+./scripts/connect_usb.sh
+```
+
+### Manual gate on a Mac (pending user run)
+
+Use a benign test string only. In a terminal, start the agent and copy the printed token:
+
+```bash
+cd mac-agent
+source .venv/bin/activate
+python -m app
+```
+
+In another terminal (replace `$TOKEN` with the printed session token):
+
+```bash
+# Health (no auth)
+curl -sS http://127.0.0.1:5000/v1/health
+
+# Unauthenticated clip must be 401
+curl -sS -o /tmp/roipaste-unauth.json -w "%{http_code}\n" http://127.0.0.1:5000/v1/clip
+# expect 401 and a {"error":{"code":"UNAUTHENTICATED",...}} body
+
+# POST clip, then confirm the Mac clipboard
+curl -sS -X POST http://127.0.0.1:5000/v1/clip \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message_id":"4cf0408d-8393-41a0-8706-53fa9754315f","origin":"android","kind":"text","text":"Xin chào từ ROIPaste 👋"}'
+pbpaste
+# expect: Xin chào từ ROIPaste 👋
+
+# Copy something on the Mac, then GET clip
+printf 'hello from Mac' | pbcopy
+curl -sS -H "Authorization: Bearer $TOKEN" http://127.0.0.1:5000/v1/clip
+
+# Oversize body must be 413
+python3 -c 'import json; print(json.dumps({"message_id":"11111111-1111-4111-8111-111111111111","origin":"android","kind":"text","text":"a"*(256*1024+1)}))' \
+  | curl -sS -X POST http://127.0.0.1:5000/v1/clip \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Content-Type: application/json" \
+      --data-binary @- -w "\n%{http_code}\n"
+# expect PAYLOAD_TOO_LARGE and HTTP 413
+```
 
 
 ## Android app
@@ -96,13 +144,12 @@ The scaffold is a single Compose (`Material 3`) `MainActivity` that shows the Vi
 - `mac-agent` — Python 3.12, `pip install -r requirements-dev.txt` (that file includes `-r requirements.txt`), then `ruff check`, `mypy app`, and `pytest`
 - `android` — JDK 17 (Temurin), Android SDK setup, Gradle setup, then `./gradlew testDebugUnitTest assembleDebug` in `android/`
 
-This workflow has been added and linted locally with `actionlint` 1.7.12. It has not yet run on GitHub.
+This workflow was observed green on GitHub after the Milestone 0 commits were pushed.
 
 ## Known limitations
 
-- The GitHub Actions workflow has not yet been observed running on GitHub.
+- The Milestone 1 real-Mac clipboard gate (`curl` + `pbpaste`/`pbcopy` on macOS) has not been run yet. Linux unit tests use a fake clipboard; the `MacClipboardAdapter` integration test is skipped except on Darwin.
+- The Android app is still a UI scaffold. USB transfer from the Ace 5 is not implemented on the client yet.
 - The `com.roipaste.app` namespace has not been checked for uniqueness on the Play Store; do that before public distribution.
-- No clipboard transfer features are implemented yet. The Mac agent exposes only `GET /v1/health`. The Android app is a UI scaffold plus a text-size unit test.
-- This environment is Linux, so macOS clipboard tools (`pbcopy` / `pbpaste`) and a real OnePlus Ace 5 were not used.
 - A local debug packaging warning reported that `libandroidx.graphics.path.so` could not be stripped; the APK still built.
 - `pytest` for the Mac agent may print a Starlette deprecation warning about using `httpx` with `TestClient` (prefer `httpx2` in a later library update).
