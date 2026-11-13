@@ -1,6 +1,6 @@
 # ROIPaste — Android ↔ macOS Clipboard Companion
 
-**Status:** Implementation-ready specification, not application source code.
+**Status:** Milestone 0 in progress. Documentation is at the repository root, the line-length guard is in place, and the mac-agent FastAPI scaffold is available. The Android Gradle project and CI workflow are not added yet.
 
 ROIPaste transfers text and URLs between an Android phone (target: OnePlus Ace 5 / OxygenOS 16) and a MacBook over USB/ADB or a secured local network, without root or cloud API.
 
@@ -55,4 +55,25 @@ Excluded directories (any path component): `.git`, `build`, `.gradle`, `.venv`, 
 
 Optional flags: `--max` (default 500) and `--root` (default `.`). The script prints the largest maintained file and its line count, and exits 1 if any file is over the limit.
 
-**This repository currently contains the specifications and agent instructions, not a built APK or macOS executable.**
+## Mac agent
+
+Tested versions: Python 3.12.16, FastAPI 0.162.5, uvicorn 0.54.0, pydantic 2.14.3, ruff 0.17.5, mypy 2.4.1, and pytest 9.2.0.
+
+```bash
+cd mac-agent
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+ruff check
+mypy app
+pytest
+uvicorn app.main:app --host 127.0.0.1 --port 5000
+```
+
+The development server binds to `127.0.0.1:5000`. This scaffold exposes only `GET /v1/health`, which returns `{"status":"ok","protocol":1}`. Clipboard routes are added in Milestone 1 and must never be unauthenticated.
+
+## Known limitations
+
+- The Android Gradle scaffold and CI workflow are not part of this change set.
+- This environment is Linux, so macOS clipboard tools (`pbcopy` / `pbpaste`) were not used. They are not required for the current health-only scaffold.
+- No packaged APK or macOS executable is produced yet.
