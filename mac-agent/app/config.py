@@ -66,6 +66,8 @@ class Settings:
     tls_enabled: bool = False
     allow_unspecified_bind: bool = False
     pairing_open: bool = False
+    watcher_enabled: bool = False
+    watcher_interval_seconds: float = 0.5
     config_dir: Path | None = None
 
     def __post_init__(self) -> None:

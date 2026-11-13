@@ -55,3 +55,13 @@ class ClipPayload(BaseModel):
     origin: Origin
     kind: ClipKind
     text: str
+
+
+class ClipNextResponse(BaseModel):
+    message_id: UUID
+    origin: Origin
+    kind: ClipKind
+    text: str
+    sequence: int
+    byte_count: int
+

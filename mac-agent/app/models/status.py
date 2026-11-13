@@ -14,3 +14,4 @@ class StatusResponse(BaseModel):
     paired: bool
     sync_paused: bool
     transport: Literal["usb", "lan"] = Field(..., description="Active transport profile")
+    watcher_enabled: bool = Field(default=False, description="Opt-in Mac clipboard watcher")
