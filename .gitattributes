@@ -1,0 +1,4 @@
+# Keep the Gradle wrapper usable after format-patch / git am.
+android/gradlew text eol=lf
+android/gradlew.bat text eol=crlf
+*.jar binary
