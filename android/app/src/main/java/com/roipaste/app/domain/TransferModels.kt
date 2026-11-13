@@ -10,6 +10,7 @@ data class FetchedClip(
     val origin: String,
     val text: String,
     val byteCount: Int,
+    val sequence: Long = 0,
 )
 
 data class MacStatus(

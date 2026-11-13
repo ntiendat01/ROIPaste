@@ -48,6 +48,12 @@ class DataStoreSessionStore(
     override val syncPaused: Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[SYNC_PAUSED] ?: false }.distinctUntilChanged()
 
+    override val autoCopyWhileOpen: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[AUTO_COPY] ?: false }.distinctUntilChanged()
+
+    override val notificationPreviews: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[NOTIFY_PREVIEWS] ?: false }.distinctUntilChanged()
+
     override val baseUrl: String
         get() = urlCache
 
@@ -73,6 +79,14 @@ class DataStoreSessionStore(
 
     override suspend fun setSyncPaused(paused: Boolean) {
         dataStore.edit { prefs -> prefs[SYNC_PAUSED] = paused }
+    }
+
+    override suspend fun setAutoCopyWhileOpen(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[AUTO_COPY] = enabled }
+    }
+
+    override suspend fun setNotificationPreviews(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[NOTIFY_PREVIEWS] = enabled }
     }
 
     override suspend fun setBaseUrl(url: String) {
@@ -167,5 +181,7 @@ class DataStoreSessionStore(
         val TRANSPORT = stringPreferencesKey("transport")
         val DEVICE_ID = stringPreferencesKey("device_id")
         val ALIAS = stringPreferencesKey("device_alias")
+        val AUTO_COPY = booleanPreferencesKey("auto_copy_while_open")
+        val NOTIFY_PREVIEWS = booleanPreferencesKey("notification_previews")
     }
 }

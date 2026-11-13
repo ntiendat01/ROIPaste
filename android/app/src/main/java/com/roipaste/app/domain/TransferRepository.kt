@@ -8,4 +8,6 @@ interface TransferRepository {
     suspend fun sendClip(text: String, messageId: String): Result<SendAck>
 
     suspend fun fetchClip(): Result<FetchedClip?>
+
+    suspend fun awaitNextClip(since: Long, timeoutSeconds: Int): Result<FetchedClip?>
 }

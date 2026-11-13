@@ -7,6 +7,10 @@ interface SessionStore {
 
     val syncPaused: Flow<Boolean>
 
+    val autoCopyWhileOpen: Flow<Boolean>
+
+    val notificationPreviews: Flow<Boolean>
+
     val baseUrl: String
 
     fun currentToken(): String?
@@ -20,6 +24,10 @@ interface SessionStore {
     suspend fun setToken(token: String?)
 
     suspend fun setSyncPaused(paused: Boolean)
+
+    suspend fun setAutoCopyWhileOpen(enabled: Boolean)
+
+    suspend fun setNotificationPreviews(enabled: Boolean)
 
     suspend fun setBaseUrl(url: String)
 

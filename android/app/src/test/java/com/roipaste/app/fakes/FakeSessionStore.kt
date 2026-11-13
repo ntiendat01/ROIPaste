@@ -15,9 +15,13 @@ class FakeSessionStore(
 ) : SessionStore {
     private val tokenState = MutableStateFlow(token)
     private val pauseState = MutableStateFlow(paused)
+    private val autoCopyState = MutableStateFlow(false)
+    private val previewState = MutableStateFlow(false)
 
     override val token: StateFlow<String?> = tokenState.asStateFlow()
     override val syncPaused: StateFlow<Boolean> = pauseState.asStateFlow()
+    override val autoCopyWhileOpen: StateFlow<Boolean> = autoCopyState.asStateFlow()
+    override val notificationPreviews: StateFlow<Boolean> = previewState.asStateFlow()
 
     var clearCount: Int = 0
 
@@ -35,6 +39,14 @@ class FakeSessionStore(
 
     override suspend fun setSyncPaused(paused: Boolean) {
         pauseState.value = paused
+    }
+
+    override suspend fun setAutoCopyWhileOpen(enabled: Boolean) {
+        autoCopyState.value = enabled
+    }
+
+    override suspend fun setNotificationPreviews(enabled: Boolean) {
+        previewState.value = enabled
     }
 
     override suspend fun setBaseUrl(url: String) {

@@ -37,8 +37,11 @@ data class ClipPayloadResponse(
     val origin: String,
     val kind: String,
     val text: String,
-    @SerialName("byte_count") val byteCount: Int,
-)
+    @SerialName("byte_count") val byteCount: Int? = null,
+    val sequence: Long = 0,
+) {
+    fun resolvedByteCount(): Int = byteCount ?: text.toByteArray(Charsets.UTF_8).size
+}
 
 @Serializable
 data class ErrorEnvelope(

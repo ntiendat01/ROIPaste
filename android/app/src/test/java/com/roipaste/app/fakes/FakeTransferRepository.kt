@@ -12,12 +12,19 @@ class FakeTransferRepository : TransferRepository {
     var sendResult: Result<SendAck> = Result.success(SendAck("msg-1", "clipboard_updated"))
     var fetchResult: Result<FetchedClip?> = Result.success(null)
     var sendBlock: CompletableDeferred<Result<SendAck>>? = null
+    var nextResult: Result<FetchedClip?> = Result.success(null)
+    var nextBlock: CompletableDeferred<Result<FetchedClip?>>? = null
+    var repeatNextResult: Boolean = false
 
     var healthCalls: Int = 0
     var statusCalls: Int = 0
     var sendCalls: Int = 0
     var fetchCalls: Int = 0
+    var nextCalls: Int = 0
+    private var nextResultConsumed: Boolean = false
     var lastSentText: String? = null
+    var lastSince: Long? = null
+    var lastTimeout: Int? = null
 
     override suspend fun health(): Result<Unit> {
         healthCalls += 1
@@ -39,5 +46,21 @@ class FakeTransferRepository : TransferRepository {
     override suspend fun fetchClip(): Result<FetchedClip?> {
         fetchCalls += 1
         return fetchResult
+    }
+
+    override suspend fun awaitNextClip(since: Long, timeoutSeconds: Int): Result<FetchedClip?> {
+        nextCalls += 1
+        lastSince = since
+        lastTimeout = timeoutSeconds
+        val block = nextBlock
+        if (block != null) {
+            nextBlock = null
+            return block.await()
+        }
+        if (!nextResultConsumed || repeatNextResult) {
+            nextResultConsumed = true
+            return nextResult
+        }
+        return CompletableDeferred<Result<FetchedClip?>>().await()
     }
 }

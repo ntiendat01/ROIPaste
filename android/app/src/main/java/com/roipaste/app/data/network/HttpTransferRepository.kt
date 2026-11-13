@@ -49,9 +49,28 @@ class HttpTransferRepository(
                     return Result.success(null)
                 }
                 val body = decode<ClipPayloadResponse>(result.body) ?: return Result.failure(TransferError.InvalidResponse)
-                Result.success(FetchedClip(body.messageId, body.origin, body.text, body.byteCount))
+                Result.success(toClip(body))
             }
         }
+    }
+
+    override suspend fun awaitNextClip(since: Long, timeoutSeconds: Int): Result<FetchedClip?> {
+        val path = "/v1/clip/next?since=$since&timeout=$timeoutSeconds"
+        val readTimeout = timeoutSeconds.toLong() + 5
+        return when (val result = api.get(path, authenticated = true, retry = false, readTimeoutSeconds = readTimeout)) {
+            is HttpResult.Failure -> Result.failure(result.error)
+            is HttpResult.Success -> {
+                if (result.code == 204) {
+                    return Result.success(null)
+                }
+                val body = decode<ClipPayloadResponse>(result.body) ?: return Result.failure(TransferError.InvalidResponse)
+                Result.success(toClip(body))
+            }
+        }
+    }
+
+    private fun toClip(body: ClipPayloadResponse): FetchedClip {
+        return FetchedClip(body.messageId, body.origin, body.text, body.resolvedByteCount(), body.sequence)
     }
 
     private inline fun <reified T> decode(body: String?): T? {
