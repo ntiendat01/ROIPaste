@@ -1,0 +1,12 @@
+"""Unauthenticated health route. Must not touch or return clipboard data."""
+
+from fastapi import APIRouter
+
+from app.models.status import HealthResponse
+
+router = APIRouter()
+
+
+@router.get("/v1/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    return HealthResponse(status="ok", protocol=1)

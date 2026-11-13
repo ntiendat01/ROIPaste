@@ -1,0 +1,1 @@
+"""ROIPaste Mac agent package."""
