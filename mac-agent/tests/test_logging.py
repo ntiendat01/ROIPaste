@@ -48,3 +48,45 @@ def test_auth_failure_does_not_log_provided_token(
     assert stolen not in caplog.text
     assert TEST_TOKEN not in caplog.text
     assert "event=unauthenticated" in caplog.text
+
+
+def test_pairing_completion_does_not_log_credential(tmp_path, caplog) -> None:
+    import logging
+
+    from fastapi.testclient import TestClient
+    from tests.fakes import FakeClipboardAdapter
+
+    from app.config import Settings
+    from app.main import create_app
+    from app.security.auth import TokenStore
+    from app.security.devices import DeviceStore, FileDeviceBackend
+    from app.security.pairing import PairingService
+
+    devices = DeviceStore(FileDeviceBackend(tmp_path / "devices.json"))
+    service = PairingService(
+        host="192.168.1.20",
+        port=5000,
+        pin="sha256/AAAA",
+        devices=devices,
+        clock=lambda: 1000.0,
+        confirm=lambda _a, _f: True,
+    )
+    enrollment = service.open_window()
+    app = create_app(
+        settings=Settings(host="127.0.0.1", profile="lan", tls_enabled=True, config_dir=tmp_path),
+        clipboard=FakeClipboardAdapter(),
+        token_store=TokenStore("usb-session"),
+        devices=devices,
+        pairing=service,
+    )
+    caplog.set_level(logging.DEBUG)
+    client = TestClient(app)
+    response = client.post(
+        "/v1/pair/complete",
+        json={"enrollment_token": enrollment.token, "device_id": "ace5", "alias": "Ace 5"},
+    )
+    assert response.status_code == 201
+    credential = response.json()["credential"]
+    combined = "\n".join(record.getMessage() for record in caplog.records)
+    assert credential not in combined
+    assert enrollment.token not in combined
