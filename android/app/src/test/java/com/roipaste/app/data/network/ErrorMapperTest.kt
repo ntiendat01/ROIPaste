@@ -9,6 +9,12 @@ class ErrorMapperTest {
     private val json = HttpTransferRepository.createJson()
 
     @Test
+    fun mapsSyncPausedEnvelope() {
+        val body = """{"error":{"code":"SYNC_PAUSED","message":"paused"}}"""
+        assertEquals(TransferError.SyncPaused, ErrorMapper.fromStatus(403, body, json))
+    }
+
+    @Test
     fun mapsKnownStatusCodes() {
         assertEquals(TransferError.Unauthenticated, ErrorMapper.fromStatus(401, null, json))
         assertEquals(TransferError.Forbidden, ErrorMapper.fromStatus(403, null, json))

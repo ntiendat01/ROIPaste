@@ -30,6 +30,15 @@ class DataStoreSessionStore(
     @Volatile
     private var urlCache: String = defaultBaseUrl
 
+    @Volatile
+    private var pinCache: String? = null
+
+    @Volatile
+    private var transportCache: String = "usb"
+
+    @Volatile
+    private var deviceIdCache: String? = null
+
     override val token: Flow<String?> =
         dataStore.data
             .map { prefs -> decodeToken(prefs[TOKEN_BLOB]) }
@@ -43,6 +52,12 @@ class DataStoreSessionStore(
         get() = urlCache
 
     override fun currentToken(): String? = tokenCache.get()
+
+    override fun currentPin(): String? = pinCache
+
+    override fun currentTransport(): String = transportCache
+
+    override fun currentDeviceId(): String? = deviceIdCache
 
     override suspend fun setToken(token: String?) {
         dataStore.edit { prefs ->
@@ -61,15 +76,73 @@ class DataStoreSessionStore(
     }
 
     override suspend fun setBaseUrl(url: String) {
-        val normalized = url.trim().trimEnd('/')
+        val normalized = normalizeUrl(url)
         dataStore.edit { prefs -> prefs[BASE_URL] = normalized }
         urlCache = normalized
+    }
+
+    override suspend fun setUsbSession(token: String) {
+        dataStore.edit { prefs ->
+            val blob = cipher.encrypt(token.toByteArray(Charsets.UTF_8))
+            prefs[TOKEN_BLOB] = Base64.encodeToString(blob, Base64.NO_WRAP)
+            prefs[BASE_URL] = defaultBaseUrl
+            prefs.remove(PIN)
+            prefs[TRANSPORT] = "usb"
+        }
+        tokenCache.set(token)
+        urlCache = defaultBaseUrl
+        pinCache = null
+        transportCache = "usb"
+    }
+
+    override suspend fun setLanSession(
+        credential: String,
+        baseUrl: String,
+        pin: String,
+        deviceId: String,
+        alias: String,
+    ) {
+        val normalized = normalizeUrl(baseUrl)
+        require(normalized.startsWith("https://")) { "LAN session must use HTTPS" }
+        dataStore.edit { prefs ->
+            val blob = cipher.encrypt(credential.toByteArray(Charsets.UTF_8))
+            prefs[TOKEN_BLOB] = Base64.encodeToString(blob, Base64.NO_WRAP)
+            prefs[BASE_URL] = normalized
+            prefs[PIN] = pin
+            prefs[TRANSPORT] = "lan"
+            prefs[DEVICE_ID] = deviceId
+            prefs[ALIAS] = alias
+        }
+        tokenCache.set(credential)
+        urlCache = normalized
+        pinCache = pin
+        transportCache = "lan"
+        deviceIdCache = deviceId
+    }
+
+    override suspend fun clearPairing() {
+        dataStore.edit { prefs ->
+            prefs.remove(TOKEN_BLOB)
+            prefs.remove(PIN)
+            prefs.remove(DEVICE_ID)
+            prefs.remove(ALIAS)
+            prefs[BASE_URL] = defaultBaseUrl
+            prefs[TRANSPORT] = "usb"
+        }
+        tokenCache.set(null)
+        urlCache = defaultBaseUrl
+        pinCache = null
+        transportCache = "usb"
+        deviceIdCache = null
     }
 
     suspend fun hydrate() {
         val prefs = dataStore.data.first()
         tokenCache.set(decodeToken(prefs[TOKEN_BLOB]))
-        urlCache = prefs[BASE_URL]?.trim()?.trimEnd('/') ?: defaultBaseUrl
+        urlCache = prefs[BASE_URL]?.let { normalizeUrl(it) } ?: defaultBaseUrl
+        pinCache = prefs[PIN]
+        transportCache = prefs[TRANSPORT] ?: "usb"
+        deviceIdCache = prefs[DEVICE_ID]
     }
 
     private fun decodeToken(encoded: String?): String? {
@@ -84,9 +157,15 @@ class DataStoreSessionStore(
         }
     }
 
+    private fun normalizeUrl(url: String): String = url.trim().trimEnd('/')
+
     private companion object {
         val TOKEN_BLOB = stringPreferencesKey("token_blob")
         val SYNC_PAUSED = booleanPreferencesKey("sync_paused")
         val BASE_URL = stringPreferencesKey("base_url")
+        val PIN = stringPreferencesKey("spki_pin")
+        val TRANSPORT = stringPreferencesKey("transport")
+        val DEVICE_ID = stringPreferencesKey("device_id")
+        val ALIAS = stringPreferencesKey("device_alias")
     }
 }

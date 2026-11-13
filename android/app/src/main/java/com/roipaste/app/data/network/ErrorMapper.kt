@@ -18,6 +18,9 @@ object ErrorMapper {
     fun fromStatus(code: Int, body: String?, json: Json): TransferError {
         val envelope = decodeEnvelope(body, json)
         val protocolCode = envelope?.error?.code
+        if (protocolCode == "SYNC_PAUSED") {
+            return TransferError.SyncPaused
+        }
         return when (code) {
             401 -> TransferError.Unauthenticated
             403 -> TransferError.Forbidden

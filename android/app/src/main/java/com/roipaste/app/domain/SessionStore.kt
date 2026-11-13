@@ -11,9 +11,27 @@ interface SessionStore {
 
     fun currentToken(): String?
 
+    fun currentPin(): String?
+
+    fun currentTransport(): String
+
+    fun currentDeviceId(): String?
+
     suspend fun setToken(token: String?)
 
     suspend fun setSyncPaused(paused: Boolean)
 
     suspend fun setBaseUrl(url: String)
+
+    suspend fun setUsbSession(token: String)
+
+    suspend fun setLanSession(
+        credential: String,
+        baseUrl: String,
+        pin: String,
+        deviceId: String,
+        alias: String,
+    )
+
+    suspend fun clearPairing()
 }

@@ -14,6 +14,9 @@ object ErrorMapping {
             LocalClipError.AccessDenied -> Banner.AccessDenied
             TransferError.Unauthenticated -> Banner.Unauthenticated
             TransferError.Forbidden -> Banner.Forbidden
+            TransferError.SyncPaused -> Banner.SyncPaused
+            TransferError.PinMismatch -> Banner.PinMismatch
+            TransferError.InsecureTransport -> Banner.InsecureTransport
             TransferError.PayloadTooLarge -> Banner.TooLarge
             TransferError.Timeout -> Banner.Timeout
             TransferError.Disconnected -> Banner.Disconnected

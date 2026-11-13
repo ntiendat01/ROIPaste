@@ -5,6 +5,8 @@ sealed class TransferError : Exception() {
 
     data object Forbidden : TransferError()
 
+    data object SyncPaused : TransferError()
+
     data object PayloadTooLarge : TransferError()
 
     data object Unavailable : TransferError()
@@ -14,6 +16,10 @@ sealed class TransferError : Exception() {
     data object Timeout : TransferError()
 
     data object InvalidResponse : TransferError()
+
+    data object PinMismatch : TransferError()
+
+    data object InsecureTransport : TransferError()
 
     data class Protocol(val code: String) : TransferError()
 }

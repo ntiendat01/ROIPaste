@@ -130,6 +130,6 @@ class HttpTransferRepositoryTest {
             .readTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
             .writeTimeout(readTimeoutMs, TimeUnit.MILLISECONDS)
             .build()
-        return HttpTransferRepository(ApiClient(store, client))
+        return HttpTransferRepository(ApiClient(store) { client })
     }
 }
