@@ -12,7 +12,15 @@ CLIP_BODY = {
 }
 
 
-@pytest.mark.parametrize("method,path", [("GET", "/v1/clip"), ("GET", "/v1/status")])
+PROTECTED_GETS = (
+    ("GET", "/v1/clip"),
+    ("GET", "/v1/status"),
+    ("GET", "/v1/clip/next?timeout=0"),
+    ("GET", "/v1/watcher"),
+)
+
+
+@pytest.mark.parametrize("method,path", PROTECTED_GETS)
 def test_missing_token_on_get(client: TestClient, method: str, path: str) -> None:
     response = client.request(method, path)
     assert response.status_code == 401
@@ -28,7 +36,15 @@ def test_missing_token_on_post_clip(client: TestClient) -> None:
     assert response.json()["error"]["code"] == "UNAUTHENTICATED"
 
 
-@pytest.mark.parametrize("method,path", [("GET", "/v1/clip"), ("GET", "/v1/status")])
+PROTECTED_GETS = (
+    ("GET", "/v1/clip"),
+    ("GET", "/v1/status"),
+    ("GET", "/v1/clip/next?timeout=0"),
+    ("GET", "/v1/watcher"),
+)
+
+
+@pytest.mark.parametrize("method,path", PROTECTED_GETS)
 def test_wrong_token_on_get(client: TestClient, method: str, path: str) -> None:
     response = client.request(method, path, headers=auth_headers("wrong-token"))
     assert response.status_code == 401
@@ -44,4 +60,9 @@ def test_wrong_token_on_post_clip(client: TestClient) -> None:
 def test_status_ok_with_valid_token(client: TestClient, token: str) -> None:
     response = client.get("/v1/status", headers=auth_headers(token))
     assert response.status_code == 200
-    assert response.json() == {"paired": True, "sync_paused": False, "transport": "usb"}
+    assert response.json() == {
+        "paired": True,
+        "sync_paused": False,
+        "transport": "usb",
+        "watcher_enabled": False,
+    }
