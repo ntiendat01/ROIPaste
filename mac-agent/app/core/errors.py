@@ -50,3 +50,26 @@ class ClipboardUnavailableError(AppError):
 
 class InvalidBindAddressError(ValueError):
     """Raised when the server would bind a non-loopback address."""
+
+
+class ForbiddenError(AppError):
+    def __init__(self, code: str = "FORBIDDEN", message: str = "Request is not allowed") -> None:
+        super().__init__(code=code, message=message, status_code=403)
+
+
+class RateLimitedError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="RATE_LIMITED",
+            message="Too many pairing attempts; try again later",
+            status_code=429,
+        )
+
+
+class PairingError(AppError):
+    def __init__(self, code: str, message: str, status_code: int = 400) -> None:
+        super().__init__(code=code, message=message, status_code=status_code)
+
+
+class InsecureLanConfigError(ValueError):
+    """Raised when the LAN profile would serve clipboard over HTTP."""
