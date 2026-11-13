@@ -40,4 +40,19 @@ ROIPaste/
 - **Milestone B:** Paired, mutually authenticated HTTPS on Wi-Fi; share sheet; reconnect UX.
 - **Milestone C:** Mac clipboard watcher + Android receive notification; optionally automatic receive if proven on the target device.
 
+## Line-length guard
+
+Maintained source and test files must stay at or under 500 physical lines. Check with:
+
+```bash
+python3 scripts/check_file_lengths.py
+python3 -m pytest scripts/tests
+```
+
+The checker counts physical lines, including blanks, comments, and a last line that has no trailing newline. It scans `.kt`, `.kts`, `.java`, `.swift`, `.py`, `.js`, `.ts`, `.tsx`, and `.sh` files.
+
+Excluded directories (any path component): `.git`, `build`, `.gradle`, `.venv`, `venv`, `node_modules`, `generated`, `__pycache__`. Lock files (for example `package-lock.json`, `uv.lock`, or `*.lock`) are also skipped.
+
+Optional flags: `--max` (default 500) and `--root` (default `.`). The script prints the largest maintained file and its line count, and exits 1 if any file is over the limit.
+
 **This repository currently contains the specifications and agent instructions, not a built APK or macOS executable.**
