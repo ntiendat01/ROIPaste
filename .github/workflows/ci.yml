@@ -52,5 +52,5 @@ jobs:
         with:
           packages: "platform-tools platforms;android-37.0 build-tools;37.0.0"
       - uses: gradle/actions/setup-gradle@v6
-      - name: Unit tests and debug APK
-        run: ./gradlew testDebugUnitTest assembleDebug
+      - name: Unit tests, debug APK, and lint
+        run: ./gradlew testDebugUnitTest assembleDebug lintDebug
