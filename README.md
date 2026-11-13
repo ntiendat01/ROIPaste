@@ -1,6 +1,6 @@
 # ROIPaste — Android ↔ macOS Clipboard Companion
 
-**Status:** Milestone 3 (secure Wi-Fi pairing) is implemented and covered by Python and JVM unit tests plus a local debug build. The real macOS clipboard gate (curl + `pbcopy`/`pbpaste`), the Ace 5 USB demo, and a real-device Wi-Fi pairing run still need to be done by the user. GitHub Actions CI for Milestone 0 was observed green.
+**Status:** Milestone 4 (opt-in Mac watcher + Android receive) is implemented and covered by Python and JVM unit tests plus a local debug build. The real macOS clipboard gate, the Ace 5 USB demo, the real-device Wi-Fi pairing run, and a real-device watcher/receive run still need to be done by the user. GitHub Actions CI for Milestone 0 was observed green.
 
 ROIPaste transfers text and URLs between an Android phone (target: OnePlus Ace 5 / OxygenOS 16) and a MacBook over USB/ADB or a secured local network, without root or cloud API.
 
@@ -70,7 +70,7 @@ pytest
 python -m app
 ```
 
-`python -m app` (the default USB profile) binds only to `127.0.0.1:5000` (non-loopback hosts are rejected) and prints a per-session bearer token once to the terminal (stdout, not the log file). `GET /v1/health` stays unauthenticated and returns `{"status":"ok","protocol":1}` with no clipboard data. `GET /v1/status` and `GET`/`POST /v1/clip` require `Authorization: Bearer <token>`.
+`python -m app` (the default USB profile) binds only to `127.0.0.1:5000` (non-loopback hosts are rejected) and prints a per-session bearer token once to the terminal (stdout, not the log file). `GET /v1/health` stays unauthenticated and returns `{"status":"ok","protocol":1}` with no clipboard data. `GET /v1/status`, `GET`/`POST /v1/clip`, `GET /v1/clip/next`, and `GET`/`POST /v1/watcher` require `Authorization: Bearer <token>`.
 
 To connect a phone over USB after the agent is running:
 
@@ -103,13 +103,31 @@ python -m app devices resume
 python -m app cert reset
 ```
 
-While the LAN server is running in a TTY, you can also type `pair`, `devices`, `revoke <id>`, `pause`, or `resume` and press Enter.
+While the LAN or USB server is running in a TTY, you can also type `pair` (LAN), `devices`, `revoke <id>`, `pause`, `resume`, `watch on`, or `watch off` and press Enter.
 
 #### Paired-device storage threat model
 
 On Darwin, hashes are written to the login Keychain via `keyring` when that backend works. Anywhere else (and whenever Keychain is unavailable, including this Linux runner and unit tests), the store is a mode-`0600` JSON file in the config directory. The file holds only SHA-256 hashes, aliases, revoke flags, and a pause flag — never the bearer itself. Anyone who can read that file or the Keychain item as your user can still *see* which devices are paired and can *replace* hashes (denial of pairing), but they cannot recover the original credential from the hash. They can also pause sync. Protect the Mac login account; this is not a multi-user hardened store.
 
+### Opt-in clipboard watcher
+
+The Mac watcher is **off by default**. It polls the clipboard text hash about every 0.5 s (`pbpaste` in this Python prototype; NSPasteboard `changeCount` via PyObjC is not required and was not added). Enable it with `--watch`, by posting `{"enabled": true}` to `/v1/watcher`, or by typing `watch on` in the agent terminal.
+
+When a change is not a ROIPaste write (digest+origin already recorded from an Android `POST /v1/clip`), the agent publishes it to a single-slot in-memory inbox. Connected Android clients receive it over authenticated long-poll `GET /v1/clip/next?since=<seq>&timeout=<seconds>` (default wait 25 s, max 30 s). If no client is waiting, only the most recent item is kept for a later poll or a `timeout=0` fetch on resume. Pause returns `403 SYNC_PAUSED`. The watcher thread stops cleanly on process shutdown. Clipboard text is never logged.
+
+This uses long-poll rather than SSE or WebSocket so the existing Bearer auth and pinned TLS stack can be reused without a second protocol. See ADR-007 in `docs/02_ARCHITECTURE.md`.
+
+```bash
+python -m app --watch
+# or, already running:
+#   watch on
+#   curl -sS -X POST http://127.0.0.1:5000/v1/watcher \
+#     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+#     -d '{"enabled": true}'
+```
+
 ### Manual gate on a Mac (pending user run)
+
 
 Use a benign test string only. In a terminal, start the agent and copy the printed token:
 
@@ -164,7 +182,7 @@ cd android
 ./gradlew testDebugUnitTest assembleDebug lintDebug
 ```
 
-The debug APK is a Compose (`Material 3`) client for USB and pinned-HTTPS Wi-Fi transfer. Home can send the Android clipboard to the Mac agent, fetch a preview (hidden until tap, truncated to 200 characters), and copy that preview back to Android. The connection card shows **Wi-Fi an toàn** after a LAN pair. A Pair screen offers USB (dev) or Wi-Fi: USB still accepts the per-session token printed by `python -m app`; Wi-Fi accepts a scanned QR or a pasted JSON/URI payload, then shows the Mac SPKI fingerprint and a device alias for confirmation before completing pairing. Share sheet (`ACTION_SEND` / `text/plain`) shows a preview and requires an explicit confirm before send. USB session tokens and LAN credentials, plus the SPKI pin and host, are stored with Android Keystore AES-GCM wrapping in DataStore, never in `BuildConfig` or logs. **Hủy ghép cặp** in Settings clears those keys. Debug builds permit cleartext only to `127.0.0.1` and `localhost`; release/main cleartext is disabled, and a stored pin never falls back to HTTP. The only added permission is `INTERNET`.
+The debug APK is a Compose (`Material 3`) client for USB and pinned-HTTPS Wi-Fi transfer. Home can send the Android clipboard to the Mac agent, fetch a preview (hidden until tap, truncated to 200 characters), and copy that preview back to Android. While the app is in the foreground and connected, it long-polls `/v1/clip/next` and shows new Mac text in the in-app preview. **Tự động sao chép khi app đang mở** is off by default and never writes the Android clipboard if the UI is not active. On resume the app fetches the latest held item. There is no foreground service and no system notification in this build; the Settings toggle **Hiện xem trước trong thông báo** is stored (default off) for later and is documented as inactive. The connection card shows **Wi-Fi an toàn** after a LAN pair. A Pair screen offers USB (dev) or Wi-Fi: USB still accepts the per-session token printed by `python -m app`; Wi-Fi accepts a scanned QR or a pasted JSON/URI payload, then shows the Mac SPKI fingerprint and a device alias for confirmation before completing pairing. Share sheet (`ACTION_SEND` / `text/plain`) shows a preview and requires an explicit confirm before send. USB session tokens and LAN credentials, plus the SPKI pin and host, are stored with Android Keystore AES-GCM wrapping in DataStore, never in `BuildConfig` or logs. **Hủy ghép cặp** in Settings clears those keys. Debug builds permit cleartext only to `127.0.0.1` and `localhost`; release/main cleartext is disabled, and a stored pin never falls back to HTTP. The only added permission is `INTERNET`.
 
 QR scanning uses the Google Play services code scanner (`play-services-code-scanner` 16.1.0) so the app does not request `CAMERA`. If Play services are missing (possible on some Ace 5 / China builds), the scan button explains that and the JSON paste field remains the fallback. CameraX + ML Kit was not chosen, to avoid a camera permission for a pairing flow that already has a manual paste path.
 
@@ -212,6 +230,27 @@ If macOS asks to allow incoming connections, choose Allow. Confirm the terminal 
 
 A USB session token must not work against the LAN port. If pairing is rejected or the pin does not match, the app must not switch to `http://`.
 
+### Manual watcher / receive gate (pending a run on Ace 5 + Mac)
+
+Use only a benign test string. Pair over USB or Wi-Fi as in the earlier gates, then on the Mac:
+
+```bash
+cd mac-agent
+source .venv/bin/activate
+python -m app --watch
+# or, if the agent is already running, type: watch on
+```
+
+Keep ROIPaste open in the foreground on the phone.
+
+1. Copy a short harmless sentence on the Mac. Within about a second the Android preview should appear (hidden until tap). `Sao chép vào Android` should paste that sentence in another app.
+2. Copy a second, different sentence on the Mac. The preview should update to the new text (back-to-back clips).
+3. Leave the auto-copy toggle off, copy again on the Mac, and confirm the Android clipboard is not overwritten until you tap **Sao chép vào Android**. Then turn **Tự động sao chép khi app đang mở** on, copy on the Mac, and paste in another Android app without tapping copy.
+4. Switch away from ROIPaste (do not expect a system notification). Copy on the Mac, return to ROIPaste; the latest item should appear. Automatic background clipboard writes are not provided.
+5. On the Mac type `pause`, copy something, and confirm the phone does not receive it (`403`). Type `resume` or `watch off` to restore or stop the watcher. Type `watch off` at the end so passive watching does not stay enabled.
+
+Sending a clip from the phone to the Mac must not bounce back to the phone (no echo loop).
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pushes and pull requests to `main` and `dev` with three jobs:
@@ -227,6 +266,9 @@ This workflow was observed green on GitHub after the Milestone 0 commits were pu
 - The Milestone 1 real-Mac clipboard gate (`curl` + `pbpaste`/`pbcopy` on macOS) has not been run yet. Linux unit tests use a fake clipboard; the `MacClipboardAdapter` integration test is skipped except on Darwin.
 - The Milestone 2 Ace 5 USB demo (install APK, paste token, send/fetch over `adb reverse`) has not been run on a physical device yet. Android JVM tests use fakes and MockWebServer.
 - The Milestone 3 real-device Wi-Fi gate (QR or paste pairing, send/fetch over pinned HTTPS, revoke) has not been run on Ace 5 + a Mac yet. LAN TLS is covered by a local uvicorn + httpx test on `127.0.0.1`, and pin mismatch is covered by MockWebServer + `HeldCertificate`.
+- The Milestone 4 watcher/receive gate has not been run on a real Mac + Ace 5. Watcher, echo suppression, pause, and long-poll are covered by unit tests (fake clipboard / TestClient). Android receive, auto-copy, and backoff are covered by JVM tests.
+- This build does not start an Android foreground service and does not post system notifications when the app is in the background. On resume the latest held inbox item is fetched. Automatic background clipboard writes are disabled and not promised. The notification-preview setting is persisted but has no effect yet.
+- The watcher polls a text hash, not NSPasteboard `changeCount`. Identical successive copies therefore may not emit a new event.
 - Optional mDNS discovery was not added. Pairing always uses the host and pin from the QR/JSON, never a discovered name alone.
 - Sleep, airplane mode, and DHCP address changes have not been tested on hardware. If the Mac's private IP changes, re-open a pairing window or start the agent so the QR advertises the new address; an already-paired phone must be re-paired if the stored host no longer reaches the agent. `python -m app cert reset` also requires a full re-pair because the pin changes.
 - QR scanning needs Google Play services. On builds without them, paste the JSON payload instead.

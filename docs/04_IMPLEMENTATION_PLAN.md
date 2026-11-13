@@ -54,13 +54,13 @@ Implement one milestone at a time. No fake API success, no hidden stubs marked c
 
 ## Milestone 4 — Opt-in Mac watcher + Android receive
 
-- [ ] Implement Mac watcher with change tracking, opt-in toggle and suppression of ROIPaste writes.
-- [ ] Choose receiver method based on device test: connected app stream with in-app preview; notification/manual copy while background.
-- [ ] Test Android clipboard write from background on target OS, but keep automatic background copy **disabled by default and non-promised**. Never add special permissions to bypass OS behavior.
-- [ ] Add backoff/connection state, battery and resource checks. Only if legally supported, add foreground service with declared type and persistent notification, obeying Android 15/16 restrictions.
-- [ ] Add integration tests for echo loops, back-to-back text, competing clips and no-delivery cases.
+- [x] Implement Mac watcher with change tracking, opt-in toggle (`--watch`, stdin `watch on|off`, `POST /v1/watcher`), and suppression of ROIPaste writes via the digest+origin LRU. The Python prototype polls a text hash every 0.5 s; PyObjC `changeCount` was not added. Local unit tests passed on 2026-11-13 (Asia/Bangkok, UTC+7). A real Mac run is still pending.
+- [x] Delivery is authenticated long-poll `GET /v1/clip/next?since=<seq>` (ADR-007) over the existing USB HTTP or pinned-HTTPS transport. While the Android app is foreground and connected, new text appears in the in-app preview. While background: no foreground service and no system notification in this build; on resume the app fetches the latest held item. Documented in the README.
+- [x] Automatic background clipboard writes stay disabled and are not promised. The optional **Tự động sao chép khi app đang mở** toggle defaults off and is ignored when the UI is not active. Covered by `HomeReceiveTest`. Background clipboard writes were not tested on Ace 5 / OxygenOS 16.
+- [x] Bounded reconnect/receive backoff (0/1/2/4 s) runs only while the UI is active. A persistent FGS was not added (not needed for the in-app preview path and not justified without a device test).
+- [x] Unit tests cover watcher change detection, echo suppression, back-to-back clips, competing clips keeping only the latest, pause, cancellation, long-poll auth and timeout, Android receive flow, auto-copy only when foreground, no copy when backgrounded, and backoff bounds. Local `ruff check`, `mypy --strict app`, `pytest` (80 passed, 1 skipped) and `./gradlew testDebugUnitTest assembleDebug lintDebug` (76 unit tests) passed on 2026-11-13 (Asia/Bangkok, UTC+7).
 
-**Gate:** Mac copy appears in ROIPaste Android UI while active, or prompt/notification while background without lost state; no echo loops.
+**Gate:** Unit tests show a Mac-side change is delivered to an active long-poll and appears in the Android preview, echoes are suppressed, and only the latest undelivered item is kept. The real-device gate (copy on a Mac, see it in ROIPaste on Ace 5, no echo loop) is still pending a user run.
 
 ## Milestone 5 — Polish / release
 

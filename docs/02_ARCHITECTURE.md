@@ -96,3 +96,4 @@ ADR-003 No plain HTTP over local Wi-Fi; pinned HTTPS before LAN release.
 ADR-004 Manual copy action on background receive is dependable baseline.
 ADR-005 Text/URL only; no persistence of clip contents by default.
 ADR-006 Hard 500 physical-line limit for every source/test file.
+ADR-007 Authenticated long-poll `GET /v1/clip/next?since=<seq>` (bounded timeout, cancelable) delivers watcher items over the same USB HTTP or pinned-HTTPS transport. SSE and WebSocket were not used, so OkHttp + certificate pinning need no second protocol and tests stay request/response.
