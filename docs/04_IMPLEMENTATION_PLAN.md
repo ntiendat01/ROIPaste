@@ -6,14 +6,14 @@ Implement one milestone at a time. No fake API success, no hidden stubs marked c
 
 ## Milestone 0 — Repository bootstrap
 
-- [ ] Create `android/` Kotlin Jetpack Compose Gradle project with documented supported versions, namespace `com.roipaste.app` (check uniqueness before public distribution), debug/release separation.
-- [ ] Create `mac-agent/` Python 3.12+ FastAPI project with venv, requirements lock, mypy/ruff/pytest (or equally maintained pinned choices).
-- [ ] Add `.gitignore` for Gradle outputs, Python venv, secrets, `.env`, release keys and logs.
-- [ ] Create `scripts/check_file_lengths.py`, CI command and tests: walk maintained source/test paths, fail if any >500 physical lines; ignore generated/build/dependency dirs only.
-- [ ] Add `README.md` setup commands with tested Mac and Android versions; never commit tokens, signing keys or certificates.
-- [ ] Ensure `AGENT.md`, `AGENTS.md`, `CLAUDE.md` retained in repo.
+- [x] Create `android/` Kotlin Jetpack Compose Gradle project with documented supported versions, namespace `com.roipaste.app` (check uniqueness before public distribution), debug/release separation. Local `./gradlew testDebugUnitTest assembleDebug` passed on 2026-11-13 (Asia/Bangkok, UTC+7) with AGP 9.5.1, Gradle 9.6.1, Kotlin 2.4.21, Compose BOM 2026.09.00, compileSdk 37. Play Store package-name uniqueness was not checked.
+- [x] Create `mac-agent/` Python 3.12+ FastAPI project with venv, requirements lock, mypy/ruff/pytest (or equally maintained pinned choices). Local `ruff check`, `mypy app`, and `pytest` passed on Python 3.12.16.
+- [x] Add `.gitignore` for Gradle outputs, Python venv, secrets, `.env`, release keys and logs.
+- [x] Create `scripts/check_file_lengths.py`, CI command and tests: walk maintained source/test paths, fail if any >500 physical lines; ignore generated/build/dependency dirs only. Local pytest fixtures (500 pass / 501 fail) and a repo-wide scan passed. A GitHub Actions job is defined but has not yet run on GitHub.
+- [x] Add `README.md` setup commands with tested Mac and Android versions; never commit tokens, signing keys or certificates.
+- [x] Ensure `AGENT.md`, `AGENTS.md`, `CLAUDE.md` retained in repo.
 
-**Gate:** clean build scaffolds + line-limit checker fails on deliberate 501-line fixture and passes on 500-line fixture.
+**Gate:** Local clean scaffolds and the line-limit checker (500-line fixture passes, 501-line fixture fails) were verified on 2026-11-13 (Asia/Bangkok, UTC+7). The GitHub Actions workflow has been added and linted with `actionlint` 1.7.12, but it has not yet run on GitHub.
 
 ## Milestone 1 — Mac loopback server & USB transfer
 
