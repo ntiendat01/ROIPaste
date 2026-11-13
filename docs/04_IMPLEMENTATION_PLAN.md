@@ -42,15 +42,15 @@ Implement one milestone at a time. No fake API success, no hidden stubs marked c
 
 ## Milestone 3 — Secure Wi-Fi pairing
 
-- [ ] Implement Mac-side HTTPS using generated local certificate + certificate/SPKI fingerprint verification in Android.
-- [ ] Implement one-time limited-lived QR enrollment challenge plus manual approval on Mac. No permanent credentials embedded in QR.
-- [ ] Save Android credential securely and Mac paired-device secret in OS-protected storage; document any threat model compromise.
-- [ ] Implement device revoke, pause, TLS invalid-cert rejection and no insecure fallback.
-- [ ] Implement QR scanner via system scanning contract or CameraX only after permissions and feasibility review.
-- [ ] Local device discovery optional (mDNS) but pairing verification never depends on name/IP.
-- [ ] Test across Wi-Fi sleep/reconnect, airplane mode and router IP changes.
+- [x] Implement Mac-side HTTPS using a generated local ECDSA P-256 certificate, with Android verifying the SPKI SHA-256 pin (custom pin-only trust manager, no trust-all). Local uvicorn + httpx TLS tests and Android MockWebServer + `HeldCertificate` pin tests passed on 2026-11-13 (Asia/Bangkok, UTC+7). A real Ace 5 + Mac Wi-Fi run has not been done.
+- [x] Implement a two-minute, single-use QR enrollment challenge plus a `y/N` confirmation on the Mac (device alias and short fingerprint). The QR/JSON contains host, port, pin, enrollment token, and protocol version, never the permanent credential. Covered by mac-agent unit tests (expiry, single use, denied without confirmation, payload has no permanent secret).
+- [x] Android stores the per-device credential, pin, and host in Keystore-wrapped DataStore. The Mac stores only a SHA-256 hash of the credential (Keychain via `keyring` on Darwin when available, otherwise a mode-`0600` JSON file in the user config directory). The file/Keychain threat model is documented in the README. Unpair in Settings clears Android keys.
+- [x] Device revoke (`python -m app devices revoke` / stdin `revoke`, and `DELETE /v1/devices/{device_id}` for the caller's own id), pause/resume (403 `SYNC_PAUSED`), TLS pin-mismatch rejection, and no HTTP fallback on LAN are implemented and covered by unit tests. USB session tokens are rejected on the LAN profile.
+- [x] QR scanning uses the Google Play services code scanner (no `CAMERA` permission), with manual paste of the pairing payload as the fallback when Play services are missing. CameraX was not used; the choice is documented in the README. The scanner itself has not been exercised on a physical device.
+- [ ] Optional mDNS / local device discovery was not implemented. Pairing verification uses the host and SPKI pin from the QR/JSON, not a discovered name.
+- [ ] Tests across Wi-Fi sleep/reconnect, airplane mode, and router IP changes have not been run on hardware.
 
-**Gate:** LAN packets cannot reveal clipboard, random LAN client cannot use clipboard endpoints, invalid certificate fails.
+**Gate:** Unit and local TLS tests show LAN HTTP is refused at config validation, unknown or revoked credentials return 401/403, and a mismatched pin fails closed. The real-device Wi-Fi gate (phone and Mac on the same LAN, QR or paste pairing, send/fetch, revoke) is still pending a user run.
 
 ## Milestone 4 — Opt-in Mac watcher + Android receive
 
