@@ -22,6 +22,9 @@
     <string name="action_cancel">Hủy</string>
     <string name="action_unpair">Hủy ghép cặp</string>
     <string name="toggle_pause_sync">Tạm dừng đồng bộ</string>
+    <string name="toggle_auto_copy">Tự động sao chép khi app đang mở</string>
+    <string name="toggle_notification_previews">Hiện xem trước trong thông báo</string>
+    <string name="settings_notifications_note">Bản này không dùng foreground service và không gửi thông báo hệ thống. Nếu app ở nền, nội dung mới được lấy lại khi bạn mở ROIPaste. Tùy chọn xem trước được lưu để dùng sau, mặc định tắt.</string>
     <string name="status_ready">Sẵn sàng</string>
     <string name="status_sent">Đã gửi sang Mac</string>
     <string name="status_sent_with_time">Đã gửi sang Mac · %1$s</string>

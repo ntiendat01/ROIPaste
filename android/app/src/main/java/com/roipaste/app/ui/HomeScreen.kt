@@ -40,6 +40,7 @@ fun HomeScreen(
     onTogglePreview: () -> Unit,
     onReconnect: () -> Unit,
     onTogglePause: (Boolean) -> Unit,
+    onToggleAutoCopy: (Boolean) -> Unit,
     onOpenPair: () -> Unit,
     onOpenSettings: () -> Unit,
     onRetry: () -> Unit,
@@ -94,6 +95,10 @@ fun HomeScreen(
                 Text(stringResource(R.string.toggle_pause_sync), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = state.syncPaused, onCheckedChange = onTogglePause)
             }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.toggle_auto_copy), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Switch(checked = state.autoCopyWhileOpen, onCheckedChange = onToggleAutoCopy)
+            }
             TextButton(onClick = onOpenPair, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(stringResource(R.string.action_pair))
             }
@@ -145,6 +150,7 @@ private fun HomeScreenPreview() {
             onTogglePreview = {},
             onReconnect = {},
             onTogglePause = {},
+            onToggleAutoCopy = {},
             onOpenPair = {},
             onOpenSettings = {},
             onRetry = {},
@@ -164,6 +170,7 @@ private fun HomeScreenDarkPreview() {
             onTogglePreview = {},
             onReconnect = {},
             onTogglePause = {},
+            onToggleAutoCopy = {},
             onOpenPair = {},
             onOpenSettings = {},
             onRetry = {},

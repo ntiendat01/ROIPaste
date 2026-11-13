@@ -13,6 +13,8 @@ data class HomeUiState(
     val previewText: String? = null,
     val previewByteCount: Int? = null,
     val syncPaused: Boolean = false,
+    val autoCopyWhileOpen: Boolean = false,
+    val notificationPreviews: Boolean = false,
     val tokenInput: String = "",
     val pairError: Boolean = false,
     val pairMethod: PairMethod = PairMethod.Usb,

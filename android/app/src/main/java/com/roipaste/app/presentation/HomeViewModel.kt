@@ -47,6 +47,14 @@ class HomeViewModel(
         scope = viewModelScope,
         onPaired = { reconnect() },
     )
+    private val receive = HomeReceive(
+        repository = repository,
+        clipboard = clipboard,
+        state = _state,
+        scope = viewModelScope,
+        ioDispatcher = ioDispatcher,
+        uiActive = uiActive,
+    )
 
     init {
         viewModelScope.launch {
@@ -59,7 +67,36 @@ class HomeViewModel(
                 _state.update { it.copy(syncPaused = paused) }
             }
         }
+        viewModelScope.launch {
+            sessionStore.autoCopyWhileOpen.collect { enabled ->
+                _state.update { it.copy(autoCopyWhileOpen = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            sessionStore.notificationPreviews.collect { enabled ->
+                _state.update { it.copy(notificationPreviews = enabled) }
+            }
+        }
         reconnect()
+    }
+
+    fun onForeground() {
+        if (_state.value.connection == ConnectionState.Connected) {
+            receive.start()
+        }
+        viewModelScope.launch { receive.fetchLatestOnResume() }
+    }
+
+    fun onBackground() {
+        receive.stop()
+    }
+
+    fun setAutoCopyWhileOpen(enabled: Boolean) {
+        viewModelScope.launch { sessionStore.setAutoCopyWhileOpen(enabled) }
+    }
+
+    fun setNotificationPreviews(enabled: Boolean) {
+        viewModelScope.launch { sessionStore.setNotificationPreviews(enabled) }
     }
 
     fun reconnect() {
@@ -113,6 +150,9 @@ class HomeViewModel(
                             it.banner ?: Banner.Ready
                         },
                     )
+                }
+                if (uiActive()) {
+                    receive.start()
                 }
                 true
             },
@@ -229,6 +269,7 @@ class HomeViewModel(
     fun unpair() {
         viewModelScope.launch {
             sessionStore.clearPairing()
+            receive.reset()
             _state.update {
                 it.copy(
                     screen = HomeScreenKind.Home,

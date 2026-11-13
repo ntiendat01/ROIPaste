@@ -36,6 +36,8 @@ class MainActivity : ComponentActivity() {
                     onTogglePreview = viewModel::togglePreview,
                     onReconnect = viewModel::reconnectWithBackoff,
                     onTogglePause = viewModel::setSyncPaused,
+                    onToggleAutoCopy = viewModel::setAutoCopyWhileOpen,
+                    onToggleNotificationPreviews = viewModel::setNotificationPreviews,
                     onOpenPair = viewModel::openPair,
                     onOpenSettings = viewModel::openSettings,
                     onTokenChange = viewModel::updateTokenInput,
@@ -64,9 +66,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         app.container.mainFocus.resumed = true
+        viewModel.onForeground()
     }
 
     override fun onPause() {
+        viewModel.onBackground()
         app.container.mainFocus.resumed = false
         super.onPause()
     }
