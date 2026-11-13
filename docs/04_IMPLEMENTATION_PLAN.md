@@ -28,17 +28,17 @@ Implement one milestone at a time. No fake API success, no hidden stubs marked c
 
 ## Milestone 2 — Android MVP app
 
-- [ ] Build Home UI: Connection, Send, Fetch, Preview/Copy, Sync paused, Error/Retry.
-- [ ] Build network repository and storage for Mac address/USB mode and secret. No HTTP/clipboard calls in Composables.
-- [ ] Use ClipboardManager only while UI Activity has focus; handle null, text coercion, size and exception.
-- [ ] `Gửi sang Mac` sends clipboard once, displays ACK and doesn't modify local text.
-- [ ] `Lấy từ Mac` fetches preview; `Sao chép` action writes Android clipboard.
-- [ ] ACTION_SEND `text/plain` Share Receiver with strict input validation and explicit confirmation before send.
-- [ ] Display connectivity failures, empty clipboard, unsupported data; never falsely show `Đã gửi`.
-- [ ] Debug-only network security config permits loopback HTTP over adb reverse; production cleartext forbidden.
-- [ ] Add unit tests for ViewModel, repository fake, content validation and lifecycle/focus rules.
+- [x] Build Home UI: Connection, Send, Fetch, Preview/Copy, Sync paused, Error/Retry. Compose screens use Vietnamese `strings.xml` and immutable `HomeUiState`; verified by local debug build and unit tests on 2026-11-13 (Asia/Bangkok, UTC+7).
+- [x] Build network repository and storage for Mac address/USB mode and secret. No HTTP/clipboard calls in Composables. Token is Keystore AES-GCM wrapped in DataStore (not BuildConfig).
+- [x] Use ClipboardManager only while UI Activity has focus; handle null, text coercion, size and exception. Covered by `AndroidClipboardGatewayTest` (source is not called when unfocused).
+- [x] `Gửi sang Mac` sends clipboard once, displays ACK and doesn't modify local text. Covered by `HomeViewModelTest`.
+- [x] `Lấy từ Mac` fetches preview; `Sao chép` action writes Android clipboard. Fetch failure does not overwrite preview or clipboard. Covered by unit tests.
+- [x] ACTION_SEND `text/plain` Share Receiver with strict input validation and explicit confirmation before send. Covered by `SharePayloadTest` and `ShareViewModelTest`.
+- [x] Display connectivity failures, empty clipboard, unsupported data; never falsely show `Đã gửi`. Covered by ViewModel tests.
+- [x] Debug-only network security config permits loopback HTTP over adb reverse; production cleartext forbidden. Debug `res/xml` allows 127.0.0.1/localhost only; main/release has cleartext disabled.
+- [x] Add unit tests for ViewModel, repository (`MockWebServer`), content validation and lifecycle/focus rules. Local `./gradlew testDebugUnitTest assembleDebug lintDebug` is required before calling this done.
 
-**Gate:** manual Ace 5 ↔ Mac demo works over USB; Android app never needs root.
+**Gate:** The Ace 5 ↔ Mac USB demo is still pending a user run. The Android app does not request root or any permission besides `INTERNET`.
 
 ## Milestone 3 — Secure Wi-Fi pairing
 

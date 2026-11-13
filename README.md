@@ -1,6 +1,6 @@
 # ROIPaste — Android ↔ macOS Clipboard Companion
 
-**Status:** Milestone 1 Mac loopback server is implemented and covered by unit tests. The real macOS clipboard gate (curl + `pbcopy`/`pbpaste`) still needs to be run on a Mac. GitHub Actions CI for Milestone 0 was observed green.
+**Status:** Milestone 2 Android USB MVP is implemented and covered by JVM unit tests and a local debug build. The real macOS clipboard gate (curl + `pbcopy`/`pbpaste`) and the Ace 5 USB demo still need to be run by the user. GitHub Actions CI for Milestone 0 was observed green.
 
 ROIPaste transfers text and URLs between an Android phone (target: OnePlus Ace 5 / OxygenOS 16) and a MacBook over USB/ADB or a secured local network, without root or cloud API.
 
@@ -123,18 +123,42 @@ python3 -c 'import json; print(json.dumps({"message_id":"11111111-1111-4111-8111
 
 ## Android app
 
-Tested versions: JDK 17.0.21 (Temurin), Android Gradle Plugin 9.5.1, Gradle 9.6.1, Kotlin 2.4.21, Compose BOM 2026.09.00, `activity-compose` 1.13.0, `compileSdk`/`targetSdk` 37, `minSdk` 29.
+Tested versions: JDK 17.0.21 (Temurin), Android Gradle Plugin 9.5.1, Gradle 9.6.1, Kotlin 2.4.21, Compose BOM 2026.09.00, `activity-compose` 1.13.0, Lifecycle 2.11.0, DataStore 1.2.0, OkHttp 4.12.0, kotlinx-serialization 1.9.0, kotlinx-coroutines 1.10.2, `compileSdk`/`targetSdk` 37, `minSdk` 29.
 
-AGP 9 enables built-in Kotlin, so the `org.jetbrains.kotlin.android` plugin must not be applied. The Compose compiler plugin (`org.jetbrains.kotlin.plugin.compose`) is still applied, and Kotlin Gradle plugin 2.4.21 is pinned in the root `build.gradle.kts` so it stays aligned with that Compose plugin. This combination was verified by a local `./gradlew testDebugUnitTest assembleDebug` run. Android's AGP 9.5 docs show Kotlin 2.4.10 with Gradle 9.6.0; Kotlin's fully tested AGP range for 2.4.20–2.4.21 currently lists up to AGP 9.3.1, while Gradle 9.6.1 is inside Kotlin 2.4.21's supported Gradle range.
+AGP 9 enables built-in Kotlin, so the `org.jetbrains.kotlin.android` plugin must not be applied. The Compose compiler plugin (`org.jetbrains.kotlin.plugin.compose`) and the serialization plugin are applied, and Kotlin Gradle plugin 2.4.21 is pinned in the root `build.gradle.kts`. Android's AGP 9.5 docs show Kotlin 2.4.10 with Gradle 9.6.0; Kotlin's fully tested AGP range for 2.4.20–2.4.21 currently lists up to AGP 9.3.1, while Gradle 9.6.1 is inside Kotlin 2.4.21's supported Gradle range.
 
 Requires JDK 17 and an Android SDK that includes platform 37 (the local SDK package was `platforms;android-37.0`). Point Gradle at the SDK with `ANDROID_HOME` / `ANDROID_SDK_ROOT` or `android/local.properties` (`sdk.dir=...`). Do not commit `local.properties`.
 
 ```bash
 cd android
-./gradlew testDebugUnitTest assembleDebug
+./gradlew testDebugUnitTest assembleDebug lintDebug
 ```
 
-The scaffold is a single Compose (`Material 3`) `MainActivity` that shows the Vietnamese `app_name` and `subtitle` strings. It has debug and release build types (release minify is off, and no signing config is checked in). There is no `INTERNET` permission and no network security config yet. A JVM unit test covers `ClipLimits.MAX_TEXT_BYTES` (256 KiB).
+The debug APK is a Compose (`Material 3`) client for USB transfer. Home can send the Android clipboard to the Mac agent, fetch a preview (hidden until tap, truncated to 200 characters), and copy that preview back to Android. A Pair screen accepts the per-session token printed by `python -m app`. Share sheet (`ACTION_SEND` / `text/plain`) shows a preview and requires an explicit confirm before send. The session token is stored with Android Keystore AES-GCM wrapping in DataStore, never in `BuildConfig` or logs. Debug builds permit cleartext only to `127.0.0.1` and `localhost`; release/main cleartext is disabled. The only added permission is `INTERNET`.
+
+### USB demo (pending a run on Ace 5 + Mac)
+
+Use only a benign test string. On the Mac:
+
+```bash
+cd mac-agent
+source .venv/bin/activate
+python -m app
+```
+
+Copy the printed session token. In another Mac terminal, from the repository root, with the phone connected and USB debugging authorized:
+
+```bash
+./scripts/connect_usb.sh
+```
+
+Install the debug APK (`android/app/build/outputs/apk/debug/app-debug.apk`) on the phone, open ROIPaste, open **Ghép cặp thiết bị**, paste the token, and save it. Then:
+
+1. Copy a short harmless sentence on the phone, open ROIPaste (it must stay in the foreground), tap **Gửi clipboard sang Mac**. The app should show **Đã gửi sang Mac**. On the Mac, `pbpaste` (or Cmd+V) should match.
+2. Copy a different harmless sentence on the Mac, tap **Lấy clipboard từ Mac**, tap the preview to reveal it, then **Sao chép vào Android**. Paste in another Android app; the text should match.
+3. Optional: share a `text/plain` snippet into ROIPaste from another app, confirm the preview, and send.
+
+If `adb reverse` is dropped (replug, `adb kill-server`, or a phone reboot), run `./scripts/connect_usb.sh` again. If the Mac agent is restarted, it prints a new token that must be saved again in the Pair screen.
 
 ## Continuous integration
 
@@ -142,14 +166,15 @@ The scaffold is a single Compose (`Material 3`) `MainActivity` that shows the Vi
 
 - `line-limit` — Python 3.12, `pytest==9.2.0`, `pytest scripts/tests`, then `python scripts/check_file_lengths.py`
 - `mac-agent` — Python 3.12, `pip install -r requirements-dev.txt` (that file includes `-r requirements.txt`), then `ruff check`, `mypy app`, and `pytest`
-- `android` — JDK 17 (Temurin), Android SDK setup, Gradle setup, then `./gradlew testDebugUnitTest assembleDebug` in `android/`
+- `android` — JDK 17 (Temurin), Android SDK setup, Gradle setup, then `./gradlew testDebugUnitTest assembleDebug lintDebug` in `android/`
 
 This workflow was observed green on GitHub after the Milestone 0 commits were pushed.
 
 ## Known limitations
 
 - The Milestone 1 real-Mac clipboard gate (`curl` + `pbpaste`/`pbcopy` on macOS) has not been run yet. Linux unit tests use a fake clipboard; the `MacClipboardAdapter` integration test is skipped except on Darwin.
-- The Android app is still a UI scaffold. USB transfer from the Ace 5 is not implemented on the client yet.
+- The Milestone 2 Ace 5 USB demo (install APK, paste token, send/fetch over `adb reverse`) has not been run on a physical device yet. Android JVM tests use fakes and MockWebServer.
+- The session token is entered manually for USB; Wi-Fi pairing and certificate pinning are Milestone 3.
 - The `com.roipaste.app` namespace has not been checked for uniqueness on the Play Store; do that before public distribution.
 - A local debug packaging warning reported that `libandroidx.graphics.path.so` could not be stripped; the APK still built.
 - `pytest` for the Mac agent may print a Starlette deprecation warning about using `httpx` with `TestClient` (prefer `httpx2` in a later library update).
